@@ -1,30 +1,29 @@
 
+name: asset-maintenance-deployment
+
 services:
   postgresdb:
     image: postgres:16-alpine
-    container_name: asset-postgres-db
+    container_name: postgresdb
+    restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: docker
       POSTGRES_DB: assert_db
-    ports:
-      - "5435:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - asset-maintenance-net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d assert_db"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
+    networks:
+      - asset-maintenance-network
 
-  backend:
-    image: docker-practice-2400090216:latest
-    container_name: asset-maintenance-backend
-    build:
-      context: ./AssetMaintenance
-      dockerfile: Dockerfile
+  asset-service:
+    image: keerthinarne26/docker-practice-2400090216:latest
+    container_name: asset-service
     ports:
       - "9005:8080"
     environment:
@@ -35,12 +34,13 @@ services:
     depends_on:
       postgresdb:
         condition: service_healthy
-    restart: on-failure
+    restart: unless-stopped
     networks:
-      - asset-maintenance-net
+      - asset-maintenance-network
 
 volumes:
   postgres_data:
 
 networks:
-  asset-maintenance-net:
+  asset-maintenance-network:
+    driver: bridge
