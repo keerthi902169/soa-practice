@@ -1,0 +1,46 @@
+
+services:
+  postgresdb:
+    image: postgres:16-alpine
+    container_name: asset-postgres-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: docker
+      POSTGRES_DB: assert_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - asset-maintenance-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d assert_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: docker-practice-2400090216:latest
+    container_name: asset-maintenance-backend
+    build:
+      context: ./AssetMaintenance
+      dockerfile: Dockerfile
+    ports:
+      - "9005:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgresdb:5432/assert_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: docker
+      SERVER_PORT: 8080
+    depends_on:
+      postgresdb:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - asset-maintenance-net
+
+volumes:
+  postgres_data:
+
+networks:
+  asset-maintenance-net:
